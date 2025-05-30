@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Political Feed - News & Memes</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Left Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-flag-usa"></i> Political Feed</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/?sort=latest&filter=all" class="nav-item {{ 'active' if current_sort == 'latest' and current_filter == 'all' }}">
+                    <i class="fas fa-home"></i> Home
+                </a>
+                <a href="/?sort=trending&filter=all" class="nav-item {{ 'active' if current_sort == 'trending' }}">
+                    <i class="fas fa-fire"></i> Trending
+                </a>
+                <a href="/?sort=latest&filter=memes" class="nav-item {{ 'active' if current_filter == 'memes' }}">
+                    <i class="fas fa-laugh"></i> Memes
+                </a>
+                <a href="/?sort=latest&filter=political" class="nav-item {{ 'active' if current_filter == 'political' }}">
+                    <i class="fas fa-vote-yea"></i> Politics
+                </a>
+                <a href="/search" class="nav-item">
+                    <i class="fas fa-search"></i> Search
+                </a>
+            </nav>
+
+            <!-- Trending Hashtags -->
+            <div class="trending-section">
+                <h3>🔥 Trending in India</h3>
+                <div class="hashtags">
+                    {% for hashtag, count in trending_hashtags %}
+                    <span class="hashtag">#{{ hashtag.replace('#', '') }} <small>({{ count }})</small></span>
+                    {% endfor %}
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Post Creation -->
+            <div class="post-composer">
+                <form action="/post" method="POST" enctype="multipart/form-data" class="composer-form">
+                    <div class="composer-header">
+                        <input type="text" name="username" placeholder="Your name" required class="username-input">
+                    </div>
+                    <textarea name="text" placeholder="What's happening in Indian politics? Share memes, news, opinions..." rows="3" class="composer-textarea"></textarea>
+                    
+                    <div class="composer-actions">
+                        <div class="media-upload">
+                            <label for="photo-upload" class="upload-btn">
+                                <i class="fas fa-image"></i> Photo/Video
+                            </label>
+                            <input type="file" name="photo" id="photo-upload" accept="image/*,video/*" style="display: none;">
+                        </div>
+                        <button type="submit" class="post-btn">
+                            <i class="fas fa-paper-plane"></i> Post
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Filter and Sort Options -->
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <span>Sort by:</span>
+                    <a href="/?sort=latest&filter={{ current_filter }}" class="filter-btn {{ 'active' if current_sort == 'latest' }}">Latest</a>
+                    <a href="/?sort=popular&filter={{ current_filter }}" class="filter-btn {{ 'active' if current_sort == 'popular' }}">Popular</a>
+                    <a href="/?sort=trending&filter={{ current_filter }}" class="filter-btn {{ 'active' if current_sort == 'trending' }}">Trending</a>
+                </div>
+                <div class="filter-group">
+                    <span>Show:</span>
+                    <a href="/?sort={{ current_sort }}&filter=all" class="filter-btn {{ 'active' if current_filter == 'all' }}">All</a>
+                    <a href="/?sort={{ current_sort }}&filter=memes" class="filter-btn {{ 'active' if current_filter == 'memes' }}">Memes</a>
+                    <a href="/?sort={{ current_sort }}&filter=political" class="filter-btn {{ 'active' if current_filter == 'political' }}">Political</a>
+                </div>
+            </div>
+
+            <!-- Posts Feed -->
+            <div class="posts-feed">
+                {% for post in posts %}
+                <article class="post-card {{ 'meme-post' if post.get('is_meme') }}">
+                    <div class="post-header">
+                        <div class="user-info">
+                            <div class="avatar">{{ post.get('username', 'A')[0].upper() }}</div>
+                            <div class="user-details">
+                                <h4>{{ post.get('username', 'Anonymous') }}</h4>
+                                <span class="post-time">{{ post.get('timestamp', '')[:19].replace('T', ' ') if post.get('timestamp') else '' }}</span>
+                                {% if post.get('is_meme') %}
+                                <span class="meme-badge">🎭 MEME</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="post-content">
+                        <p>{{ post.get('text', '') }}</p>
+                        {% if post.get('photo') %}
+                        <div class="post-media">
+                            {% if post.get('photo', '').lower().endswith(('.mp4', '.mov')) %}
+                            <video controls class="post-video">
+                                <source src="{{ url_for('static', filename='uploads/' + post.get('photo')) }}" type="video/mp4">
+                            </video>
+                            {% else %}
+                            <img src="{{ url_for('static', filename='uploads/' + post.get('photo')) }}" alt="Post media" class="post-image">
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="post-actions">
+                        <form action="/like/{{ post.get('id', '') }}" method="POST" class="action-form">
+                            <button type="submit" class="action-btn like-btn">
+                                <i class="fas fa-heart"></i> {{ post.get('likes', 0) }}
+                            </button>
+                        </form>
+                        
+                        <button class="action-btn comment-btn" onclick="toggleComments('{{ post.get('id', '') }}')">
+                            <i class="fas fa-comment"></i> {{ post.get('comments', [])|length }}
+                        </button>
+                        
+                        <button class="action-btn share-btn" onclick="sharePost('{{ post.get('id', '') }}')">
+                            <i class="fas fa-share"></i> {{ post.get('shares', 0) }}
+                        </button>
+                    </div>
+
+                    <!-- Comments Section -->
+                    <div class="comments-section" id="comments-{{ post.get('id', '') }}" style="display: none;">
+                        {% if post.get('comments') %}
+                        <div class="existing-comments">
+                            {% for comment in post.get('comments', []) %}
+                            <div class="comment">
+                                <strong>{{ comment.get('username', 'Anonymous') }}:</strong>
+                                <span>{{ comment.get('text', '') }}</span>
+                                <small>{{ comment.get('timestamp', '')[:19].replace('T', ' ') if comment.get('timestamp') else '' }}</small>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <form action="/comment/{{ post.get('id', '') }}" method="POST" class="comment-form">
+                            <input type="text" name="username" placeholder="Your name" required class="comment-username">
+                            <input type="text" name="comment" placeholder="Add a comment..." required class="comment-input">
+                            <button type="submit" class="comment-submit">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </main>
+
+        <!-- Right Sidebar - News -->
+        <aside class="news-sidebar">
+            <div class="news-section">
+                <h3><i class="fas fa-newspaper"></i> Latest News</h3>
+                
+                {% for region, articles in news.items() %}
+                <div class="news-region">
+                    <h4>{{ region.replace('_', ' ').title() }}</h4>
+                    <div class="news-items">
+                        {% for item in articles %}
+                        <div class="news-item">
+                            <a href="{{ item.get('link', '#') }}" target="_blank" class="news-link">
+                                <h5>{{ item.get('title', 'No title')[:80] }}{% if item.get('title', '')|length > 80 %}...{% endif %}</h5>
+                                {% if item.get('summary') %}
+                                <p>{{ item.get('summary', '')[:100] }}...</p>
+                                {% endif %}
+                                <small>{{ item.get('source', 'Unknown source') }}</small>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Quick Search -->
+            <div class="search-widget">
+                <form action="/search" method="GET" class="search-form">
+                    <input type="text" name="q" placeholder="Search posts..." class="search-input">
+                    <button type="submit" class="search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // Toggle comments
+        function toggleComments(postId) {
+            const commentsDiv = document.getElementById('comments-' + postId);
+            if (commentsDiv) {
+                commentsDiv.style.display = commentsDiv.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        // Share post
+        function sharePost(postId) {
+            if (!postId) return;
+            fetch('/share/' + postId, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    }
+                })
+                .catch(error => console.error('Error sharing post:', error));
+        }
+
+        // Auto-refresh posts every 30 seconds
+        setInterval(() => {
+            if (document.hidden === false) {
+                location.reload();
+            }
+        }, 30000);
+
+        // Preview uploaded media
+        document.getElementById('photo-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Remove existing preview
+                const existingPreview = document.querySelector('.media-preview');
+                if (existingPreview) {
+                    existingPreview.remove();
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Create preview element
+                    const preview = document.createElement('div');
+                    preview.className = 'media-preview';
+                    if (file.type.startsWith('video/')) {
+                        preview.innerHTML = `<video src="${e.target.result}" controls style="max-width: 200px; margin-top: 10px;"></video>`;
+                    } else {
+                        preview.innerHTML = `<img src="${e.target.result}" style="max-width: 200px; margin-top: 10px;">`;
+                    }
+                    document.querySelector('.composer-actions').appendChild(preview);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+</body>
+</html>

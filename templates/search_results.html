@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results - Indian Political Feed</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Left Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-flag-usa"></i> Political Feed</h2>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/" class="nav-item">
+                    <i class="fas fa-home"></i> Home
+                </a>
+                <a href="/?sort=trending" class="nav-item">
+                    <i class="fas fa-fire"></i> Trending
+                </a>
+                <a href="/?filter=memes" class="nav-item">
+                    <i class="fas fa-laugh"></i> Memes
+                </a>
+                <a href="/?filter=political" class="nav-item">
+                    <i class="fas fa-vote-yea"></i> Politics
+                </a>
+                <a href="/search" class="nav-item active">
+                    <i class="fas fa-search"></i> Search
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="search-header">
+                <h2><i class="fas fa-search"></i> Search Results</h2>
+                <form action="/search" method="GET" class="search-form-main">
+                    <input type="text" name="q" value="{{ query }}" placeholder="Search posts, users, hashtags..." class="main-search-input">
+                    <button type="submit" class="search-btn-main">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+                
+                {% if query %}
+                <p class="search-info">
+                    {% if posts %}
+                        Found {{ posts|length }} result(s) for "{{ query }}"
+                    {% else %}
+                        No results found for "{{ query }}"
+                    {% endif %}
+                </p>
+                {% endif %}
+            </div>
+
+            <!-- Search Results -->
+            <div class="posts-feed">
+                {% if posts %}
+                    {% for post in posts %}
+                    <article class="post-card {{ 'meme-post' if post.is_meme }}">
+                        <div class="post-header">
+                            <div class="user-info">
+                                <div class="avatar">{{ post.username[0].upper() }}</div>
+                                <div class="user-details">
+                                    <h4>{{ post.username }}</h4>
+                                    <span class="post-time">{{ post.timestamp[:19].replace('T', ' ') }}</span>
+                                    {% if post.is_meme %}
+                                    <span class="meme-badge">🎭 MEME</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="post-content">
+                            <p>{{ post.text | replace(query, '<mark>' + query + '</mark>') | safe }}</p>
+                            {% if post.photo %}
+                            <div class="post-media">
+                                {% if post.photo.lower().endswith(('.mp4', '.mov')) %}
+                                <video controls class="post-video">
+                                    <source src="{{ url_for('static', filename='uploads/' + post.photo) }}" type="video/mp4">
+                                </video>
+                                {% else %}
+                                <img src="{{ url_for('static', filename='uploads/' + post.photo) }}" alt="Post media" class="post-image">
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="post-actions">
+                            <form action="/like/{{ post.id }}" method="POST" class="action-form">
+                                <button type="submit" class="action-btn like-btn">
+                                    <i class="fas fa-heart"></i> {{ post.likes }}
+                                </button>
+                            </form>
+                            
+                            <button class="action-btn comment-btn" onclick="toggleComments('{{ post.id }}')">
+                                <i class="fas fa-comment"></i> {{ post.comments|length if post.comments else 0 }}
+                            </button>
+                            
+                            <button class="action-btn share-btn" onclick="sharePost('{{ post.id }}')">
+                                <i class="fas fa-share"></i> {{ post.shares if post.shares else 0 }}
+                            </button>
+                        </div>
+
+                        <!-- Comments Section -->
+                        <div class="comments-section" id="comments-{{ post.id }}" style="display: none;">
+                            {% if post.comments %}
+                            <div class="existing-comments">
+                                {% for comment in post.comments %}
+                                <div class="comment">
+                                    <strong>{{ comment.username }}:</strong>
+                                    <span>{{ comment.text }}</span>
+                                    <small>{{ comment.timestamp[:19].replace('T', ' ') }}</small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            
+                            <form action="/comment/{{ post.id }}" method="POST" class="comment-form">
+                                <input type="text" name="username" placeholder="Your name" required class="comment-username">
+                                <input type="text" name="comment" placeholder="Add a comment..." required class="comment-input">
+                                <button type="submit" class="comment-submit">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </article>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-results">
+                        <i class="fas fa-search" style="font-size: 4rem; color: #71767b; margin-bottom: 20px;"></i>
+                        <h3>No posts found</h3>
+                        <p>Try different keywords or check the spelling</p>
+                        <div class="search-suggestions">
+                            <h4>Popular searches:</h4>
+                            <div class="suggestion-tags">
+                                <a href="/search?q=politics" class="suggestion-tag">#politics</a>
+                                <a href="/search?q=meme" class="suggestion-tag">#meme</a>
+                                <a href="/search?q=andhra" class="suggestion-tag">#andhra</a>
+                                <a href="/search?q=telangana" class="suggestion-tag">#telangana</a>
+                                <a href="/search?q=modi" class="suggestion-tag">#modi</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </main>
+
+        <!-- Right Sidebar - Empty for search page -->
+        <aside class="news-sidebar">
+            <div class="search-tips">
+                <h3><i class="fas fa-lightbulb"></i> Search Tips</h3>
+                <ul class="tips-list">
+                    <li>Use hashtags like <code>#politics</code></li>
+                    <li>Search by username</li>
+                    <li>Use keywords for content</li>
+                    <li>Try variations of spelling</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+
+    <style>
+        .search-header {
+            padding: 20px;
+            border-bottom: 1px solid #38444d;
+        }
+
+        .search-header h2 {
+            color: #1d9bf0;
+            margin-bottom: 20px;
+        }
+
+        .search-form-main {
+            display: flex;
+            margin-bottom: 15px;
+        }
+
+        .main-search-input {
+            flex: 1;
+            background: #253341;
+            border: 1px solid #38444d;
+            border-radius: 25px;
+            padding: 15px 20px;
+            color: #ffffff;
+            font-size: 16px;
+        }
+
+        .search-btn-main {
+            background: #1d9bf0;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            margin-left: 15px;
+            cursor: pointer;
+        }
+
+        .search-info {
+            color: #71767b;
+            font-size: 14px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: #71767b;
+        }
+
+        .search-suggestions {
+            margin-top: 30px;
+        }
+
+        .suggestion-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .suggestion-tag {
+            background: #253341;
+            color: #1d9bf0;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            border: 1px solid #38444d;
+            transition: all 0.2s;
+        }
+
+        .suggestion-tag:hover {
+            background: #1d9bf0;
+            color: white;
+        }
+
+        .search-tips {
+            background: #253341;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px;
+            border: 1px solid #38444d;
+        }
+
+        .search-tips h3 {
+            color: #1d9bf0;
+            margin-bottom: 15px;
+        }
+
+        .tips-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .tips-list li {
+            padding: 8px 0;
+            color: #71767b;
+            border-bottom: 1px solid #38444d;
+        }
+
+        .tips-list code {
+            background: #192734;
+            color: #1d9bf0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        mark {
+            background: #1d9bf0;
+            color: white;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+
+    <script>
+        // Toggle comments
+        function toggleComments(postId) {
+            const commentsDiv = document.getElementById('comments-' + postId);
+            commentsDiv.style.display = commentsDiv.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Share post
+        function sharePost(postId) {
+            fetch('/share/' + postId, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    }
+                });
+        }
+    </script>
+</body>
+</html>
